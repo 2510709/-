@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>동연이 갈구기</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+        Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: #1a1a1a;
+      color: #e0e0e0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+      background-color: #2b2b2b;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      padding: 25px 30px;
+      border: 1px solid #444;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #ff4d4d;
+      text-shadow: 0 0 5px rgba(255, 77, 77, 0.5);
+    }
+    .input-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .input-group label {
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #bbb;
+    }
+    .input-group input[type="text"],
+    .input-group textarea {
+      width: 100%;
+      padding: 12px;
+      background-color: #333;
+      color: #e0e0e0;
+      border: 1px solid #555;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+    .input-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .button-group button {
+      flex: 1;
+      padding: 12px 15px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    #save-btn { background-color: #b30000; color: white; }
+    #save-btn:hover { background-color: #800000; }
+    #delete-btn { background-color: #555; color: #ccc; }
+    #delete-btn:hover { background-color: #777; }
+    hr {
+      border: 0;
+      height: 1px;
+      background-color: #444;
+      margin: 25px 0;
+    }
+    #display-area {
+      background-color: #222;
+      border: 1px dashed #666;
+      border-radius: 5px;
+      padding: 20px;
+      min-height: 80px;
+      word-wrap: break-word;
+    }
+    #display-area h3 {
+      margin-top: 0;
+      color: #e0e0e0;
+    }
+    #display-area p {
+      font-size: 1.1rem;
+      white-space: pre-wrap;
+    }
+    .placeholder {
+      color: #777;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>동연이 갈구기</h1>
+    <div class="input-form">
+      <div class="input-group">
+        <label for="user-name">이름</label>
+        <input type="text" id="user-name" placeholder="그대의 이름은...">
+      </div>
+      <div class="input-group">
+        <label for="user-resolution">각오</label>
+        <textarea id="user-resolution" rows="5" placeholder="어떤 각오로 임하겠는가..."></textarea>
+      </div>
+      <div class="button-group">
+        <button id="save-btn">서약 저장 📜</button>
+        <button id="delete-btn">전체 파기 🗑️</button>
+      </div>
+    </div>
+
+    <hr>
+    <h2>봉인된 서약들</h2>
+    <div id="display-area">
+      <p class="placeholder">아직 저장된 서약이 없습니다.</p>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+  <script>
+    // ⚙️ Firebase 설정 복사해서 여기에 넣기
+    const firebaseConfig = {
+  apiKey: "AIzaSyC6x8m0LoJkNeLwKvcvysfQ6NcpXxrB1Q0",
+  authDomain: "dongdong-ecb97.firebaseapp.com",
+  databaseURL: "https://dongdong-ecb97-default-rtdb.firebaseio.com",
+  projectId: "dongdong-ecb97",
+  storageBucket: "dongdong-ecb97.firebasestorage.app",
+  messagingSenderId: "61691589939",
+  appId: "1:61691589939:web:259c26d4212dcd19c37a46",
+  measurementId: "G-4JXZ87K2P5"
+};
+
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const nameInput = document.getElementById("user-name");
+    const resolutionInput = document.getElementById("user-resolution");
+    const saveBtn = document.getElementById("save-btn");
+    const deleteBtn = document.getElementById("delete-btn");
+    const displayArea = document.getElementById("display-area");
+
+    async function loadData() {
+      const snapshot = await db.collection("resolutions").get();
+      displayArea.innerHTML = "";
+      if (snapshot.empty) {
+        displayArea.innerHTML = `<p class="placeholder">아직 저장된 서약이 없습니다.</p>`;
+        return;
+      }
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const entry = document.createElement("div");
+        entry.innerHTML = `<h3>${data.name}의 서약</h3><p>${data.resolution}</p><hr>`;
+        displayArea.appendChild(entry);
+      });
+    }
+
+    async function saveData() {
+      const nameValue = nameInput.value.trim();
+      const resolutionValue = resolutionInput.value.trim();
+      if (!nameValue || !resolutionValue) {
+        alert("이름과 서약을 모두 입력해야 합니다!");
+        return;
+      }
+      await db.collection("resolutions").add({
+        name: nameValue,
+        resolution: resolutionValue,
+        timestamp: new Date()
+      });
+      alert("서약이 봉인되었습니다... 📜");
+      nameInput.value = "";
+      resolutionInput.value = "";
+      loadData();
+    }
+
+    async function deleteAll() {
+      if (!confirm("정말로 모든 서약을 파기하시겠습니까?")) return;
+      const snapshot = await db.collection("resolutions").get();
+      const batch = db.batch();
+      snapshot.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      alert("모든 서약이 파기되었습니다.");
+      loadData();
+    }
+
+    saveBtn.addEventListener("click", saveData);
+    deleteBtn.addEventListener("click", deleteAll);
+    loadData();
+  </script>
+</body>
+</html>
